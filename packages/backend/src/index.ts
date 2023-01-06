@@ -28,6 +28,8 @@ import scaffolder from './plugins/scaffolder';
 import proxy from './plugins/proxy';
 import techdocs from './plugins/techdocs';
 import search from './plugins/search';
+import healthcheck from './plugins/healthcheck';
+import testPlugin from './plugins/test-plugin';
 import { PluginEnvironment } from './types';
 import { ServerPermissionClient } from '@backstage/plugin-permission-node';
 import { DefaultIdentityClient } from '@backstage/plugin-auth-node';
@@ -78,27 +80,47 @@ async function main() {
   });
   const createEnv = makeCreateEnv(config);
 
+  const healthcheckEnv = useHotMemoize(module, () => createEnv('healthcheck'));
   const catalogEnv = useHotMemoize(module, () => createEnv('catalog'));
   const scaffolderEnv = useHotMemoize(module, () => createEnv('scaffolder'));
   const authEnv = useHotMemoize(module, () => createEnv('auth'));
   const proxyEnv = useHotMemoize(module, () => createEnv('proxy'));
   const techdocsEnv = useHotMemoize(module, () => createEnv('techdocs'));
   const searchEnv = useHotMemoize(module, () => createEnv('search'));
+  const testEnv = useHotMemoize(module, () => createEnv('test-plugin'));
   const appEnv = useHotMemoize(module, () => createEnv('app'));
 
+  const routes = [
+    { path: '/catalog', handler: catalog(catalogEnv) },
+    { path: '/scaffolder', handler: scaffolder(scaffolderEnv), healthEndpoint: '/v2/tasks'},
+    { path: '/auth', handler: auth(authEnv) },
+    { path: '/techdocs', handler: techdocs(techdocsEnv) },
+    { path: '/proxy', handler: proxy(proxyEnv) },
+    { path: '/search', handler: search(searchEnv) },
+    { path: '/test', handler: testPlugin(testEnv) },
+  ]
+
   const apiRouter = Router();
-  apiRouter.use('/catalog', await catalog(catalogEnv));
-  apiRouter.use('/scaffolder', await scaffolder(scaffolderEnv));
-  apiRouter.use('/auth', await auth(authEnv));
-  apiRouter.use('/techdocs', await techdocs(techdocsEnv));
-  apiRouter.use('/proxy', await proxy(proxyEnv));
-  apiRouter.use('/search', await search(searchEnv));
+  for(const route of routes) {
+    apiRouter.use(route.path, await route.handler);
+  }
+  // apiRouter.use('/catalog', await catalog(catalogEnv));
+  // apiRouter.use('/scaffolder', await scaffolder(scaffolderEnv));
+  // apiRouter.use('/auth', await auth(authEnv));
+  // apiRouter.use('/techdocs', await techdocs(techdocsEnv));
+  // apiRouter.use('/proxy', await proxy(proxyEnv));
+  // apiRouter.use('/search', await search(searchEnv));
+  // apiRouter.use('/test', await testPlugin(testEnv));
+
 
   // Add backends ABOVE this line; this 404 handler is the catch-all fallback
   apiRouter.use(notFoundHandler());
 
+  console.log("#### api router", apiRouter)
+
   const service = createServiceBuilder(module)
     .loadConfig(config)
+    .addRouter('/health-check', await healthcheck(healthcheckEnv, routes))
     .addRouter('/api', apiRouter)
     .addRouter('', await app(appEnv));
 

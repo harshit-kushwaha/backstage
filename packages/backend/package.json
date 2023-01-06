@@ -13,7 +13,7 @@
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
-    "build-image": "docker build ../.. -f Dockerfile --tag backstage"
+    "build-image": "docker build ../.. -f Dockerfile --tag backstage-backend"
   },
   "dependencies": {
     "@backstage/backend-common": "^0.17.0",
@@ -33,6 +33,7 @@
     "@backstage/plugin-search-backend-module-pg": "^0.5.0",
     "@backstage/plugin-search-backend-node": "^1.1.0",
     "@backstage/plugin-techdocs-backend": "^1.5.0",
+    "@internal/plugin-test-plugin-backend": "0.1.0",
     "app": "link:../app",
     "better-sqlite3": "^7.5.0",
     "dockerode": "^3.3.1",
